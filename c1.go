@@ -38,14 +38,24 @@ func HexToBase64(hex string) string {
 		// first 6 bits from [0]
 		section += decimalToBase64(((um << 2) & decVals[0]) >> 2)
 
-		// 2 bits from end of [0], 4 bits from start of [1]
-		section += decimalToBase64(((lm & decVals[0]) << 4) | ((0xF0 & decVals[1]) >> 4))
+		if len(decVals) > 1 {
+			// 2 bits from end of [0], 4 bits from start of [1]
+			section += decimalToBase64(((lm & decVals[0]) << 4) | ((0xF0 & decVals[1]) >> 4))
 
-		// 4 bits from end of [1], 2 bits from start of [2]
-		section += decimalToBase64(((0x0F & decVals[1]) << 2) | ((0xC0 & decVals[2]) >> 6))
+			if len(decVals) > 2 {
+				// 4 bits from end of [1], 2 bits from start of [2]
+				section += decimalToBase64(((0x0F & decVals[1]) << 2) | ((0xC0 & decVals[2]) >> 6))
 
-		// 6 bits from end of [3]
-		section += decimalToBase64((0x3F & decVals[2]))
+				// 6 bits from end of [3]
+				section += decimalToBase64((0x3F & decVals[2]))
+			} else {
+				section += decimalToBase64(((0x0F & decVals[1]) << 2) | 0x00)
+				section += "="
+			}
+		} else {
+			section += decimalToBase64(((lm & decVals[0]) << 4))
+			section += "=="
+		}
 
 		data += section
 	}
@@ -59,14 +69,14 @@ func fill(hex string, index int) []byte {
 		hexValue = append(hexValue, hex[idx+index])
 	}
 
-	for idx := len(hexValue); idx < 6; idx++ {
-		hexValue = append(hexValue, 255)
-	}
-
 	output := make([]byte, 0)
-	for idx := 0; idx < 6; idx += 2 {
-		decimal0, decimal1 := hexRuneToDecimal(hexValue[idx])<<4, hexRuneToDecimal(hexValue[idx+1])
-		output = append(output, decimal0|decimal1)
+	for idx := 0; idx < len(hexValue); idx++ {
+		decimal := hexRuneToDecimal(hexValue[idx])
+		if idx%2 == 0 {
+			output = append(output, decimal<<4)
+		} else {
+			output[len(output)-1] |= decimal
+		}
 	}
 
 	return output
